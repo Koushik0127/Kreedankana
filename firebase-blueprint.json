@@ -1,0 +1,99 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Ground slot reservation",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "teamName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "sport": { "type": "string", "enum": ["Cricket", "Volleyball", "Football"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "teamName", "date", "startTime", "endTime"]
+    },
+    "Challenge": {
+      "title": "Challenge",
+      "description": "Match challenge posted to the board",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorTeam": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "sport": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "accepted", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "title", "sport", "status"]
+    },
+    "ChallengeResponse": {
+      "title": "Challenge Response",
+      "description": "A reply to a match challenge",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "teamName": { "type": "string" },
+        "message": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "teamName", "message"]
+    },
+    "MatchResult": {
+      "title": "Match Result",
+      "description": "Recorded results of a match",
+      "type": "object",
+      "properties": {
+        "sport": { "type": "string" },
+        "teamA": { "type": "string" },
+        "teamB": { "type": "string" },
+        "scoreA": { "type": "integer" },
+        "scoreB": { "type": "integer" },
+        "date": { "type": "string", "format": "date" },
+        "recordedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sport", "teamA", "teamB", "scoreA", "scoreB"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Ground slot bookings"
+    },
+    "/challenges/{challengeId}": {
+      "schema": "Challenge",
+      "description": "Active challenges"
+    },
+    "/challenges/{challengeId}/responses/{responseId}": {
+      "schema": "ChallengeResponse",
+      "description": "Responses to challenges"
+    },
+    "/results/{resultId}": {
+      "schema": "MatchResult",
+      "description": "Match score wall entries"
+    }
+  }
+}

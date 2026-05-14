@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validations ---
+    
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.email is string && data.email.size() <= 256
+        && (data.displayName == null || (data.displayName is string && data.displayName.size() <= 100))
+        && (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 500));
+    }
+
+    function isValidBooking(data) {
+      return data.userId == request.auth.uid
+        && data.teamName is string && data.teamName.size() <= 100
+        && data.date is string && data.date.size() == 10
+        && data.startTime is string && data.endTime is string
+        && (data.sport in ['Cricket', 'Volleyball', 'Football', 'Kabaddi']);
+    }
+
+    function isValidChallenge(data) {
+      return data.creatorId == request.auth.uid
+        && data.creatorTeam is string && data.creatorTeam.size() <= 100
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 1000
+        && data.date is string && data.date.size() == 10
+        && data.startTime is string && data.endTime is string
+        && data.sport in ['Cricket', 'Volleyball', 'Football', 'Kabaddi']
+        && data.status in ['open', 'accepted', 'completed'];
+    }
+
+    function isValidResponse(data) {
+      return data.userId == request.auth.uid
+        && data.teamName is string && data.teamName.size() <= 100
+        && data.message is string && data.message.size() <= 500;
+    }
+
+    function isValidMatchResult(data) {
+      return data.teamA is string && data.teamB is string
+        && data.scoreA is int && data.scoreB is int
+        && data.recordedBy == request.auth.uid;
+    }
+
+    // --- Rules ---
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false; // Users can't list other users
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL']);
+    }
+
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidBooking(incoming()) && isValidId(bookingId);
+      allow update: if isOwner(existing().userId) && isValidBooking(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['teamName', 'startTime', 'endTime', 'sport']);
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /challenges/{challengeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidChallenge(incoming()) && isValidId(challengeId);
+      allow update: if isSignedIn() && (
+        // Creator can update title/desc
+        (isOwner(existing().creatorId) && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'sport', 'status'])) ||
+        // Anyone can accept (though we use responses, maybe update status too)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+      );
+      allow delete: if isOwner(existing().creatorId);
+
+      match /responses/{responseId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && isValidResponse(incoming()) && isValidId(responseId);
+      }
+    }
+
+    match /results/{resultId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidMatchResult(incoming()) && isValidId(resultId);
+      allow delete: if isOwner(existing().recordedBy);
+    }
+  }
+}
